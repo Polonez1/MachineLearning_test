@@ -3,6 +3,36 @@ import zipfile
 import pandas as pd
 import numpy as np
 
+GAMES_COL = [
+    "home_club_id",
+    "away_club_id",
+    "home_club_position",
+    "away_club_position",
+    "attendance",
+    "home_club_name",
+    "away_club_name",
+    "result",
+]
+
+CLUB_COL = [
+    "club_id",
+    "squad_size",
+    "average_age",
+    "foreigners_percentage",
+    "national_team_players",
+]
+
+FINAL_COL = [
+    "home_club_position",
+    "away_club_position",
+    "attendance",
+    "squad_size_x",
+    "average_age_x",
+    "foreigners_percentage_x",
+    "national_team_players_x",
+    "result",
+]
+
 
 def download_data():
     api = KaggleApi()
@@ -28,43 +58,14 @@ def load_df():
             np.where(x["home_club_goals"] < x["away_club_goals"], "home_loss", "draw"),
         )
     )
-    games = games[
-        [
-            "home_club_id",
-            "away_club_id",
-            "home_club_position",
-            "away_club_position",
-            "attendance",
-            "home_club_name",
-            "away_club_name",
-            "result",
-        ]
-    ]
+    games = games[GAMES_COL]
 
     clubs = pd.read_csv("./data/clubs.csv")
-    clubs = clubs[
-        [
-            "club_id",
-            "squad_size",
-            "average_age",
-            "foreigners_percentage",
-            "national_team_players",
-        ]
-    ]
+    clubs = clubs[CLUB_COL]
 
     df = pd.merge(games, clubs, how="left", left_on="home_club_id", right_on="club_id")
     df = pd.merge(df, clubs, how="left", left_on="away_club_id", right_on="club_id")
-    df = df[
-        [
-            "home_club_position",
-            "away_club_position",
-            "attendance",
-            "squad_size_x",
-            "average_age_x",
-            "foreigners_percentage_x",
-            "national_team_players_x",
-            "result",
-        ]
-    ]
+
+    df = df[FINAL_COL]
 
     return df
