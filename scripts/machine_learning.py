@@ -28,17 +28,28 @@ def transform_data(df: pd.DataFrame):
         OrdinalEncoder(categories="auto"),
     )
 
-    num_transformer = make_pipeline(MinMaxScaler())
-
     preprocessor = ColumnTransformer(
         transformers=[
             ("result", cat_transformer, ["result"]),
-            ("num", num_transformer, ["attendance"]),
+            ("attendance", cat_transformer, ["result"]),
         ]
     )
-    transformed_values = preprocessor.fit_transform(df_copy)
 
+    transformed_values = preprocessor.fit_transform(df_copy)
     df_copy[["result", "attendance"]] = transformed_values
+
+    # encoded_result = transformed_values[:, 0]
+    #
+    # categories_result = (
+    #    preprocessor.named_transformers_["result"]
+    #    .named_steps["ordinalencoder"]
+    #    .categories_[0]
+    # )
+    # decoded_result = [categories_result[int(val)] for val in encoded_result]
+    #
+    # mapping = {
+    #    label: encoded for label, encoded in zip(categories_result, encoded_result)
+    # }
 
     return df_copy
 
@@ -68,9 +79,11 @@ def SimpleImputer_transform(df: pd.DataFrame):
     return df_transformed_filled
 
 
-def test_linear_model(
+def find_best_linear_parameters(
     X,
     y,
+    X_test,
+    y_test,
     cv=5,
     polynomialfeatures__degree: list = [2, 3, 4],
     linearregression__n_jobs: list = [1, 5, 10],
@@ -84,26 +97,42 @@ def test_linear_model(
 
     grid = GridSearchCV(model, param_grid=params, cv=cv)
     grid.fit(X, y)
-    best_parameter = grid.best_params_
+    grid.cv_results_
 
-    return best_parameter
+    return grid.cv_results_
 
 
-def test_gausian_model(
-    X,
-    y,
-    cv=5,
-):
+def find_best_gausian_parameters(X, y, cv=5):
     model = make_pipeline(SimpleImputer(), GaussianNB())
     params = {
         "simpleimputer__strategy": ["mean", "median"],
+        "gaussiannb__priors": [
+            None,
+            [0.45, 0.3, 0.25],
+        ],
+        "gaussiannb__var_smoothing": [1e-9, 1e-6],
     }
 
     grid = GridSearchCV(model, param_grid=params, cv=cv)
     grid.fit(X, y)
-    best_parameter = grid.best_params_
+    grid.cv_results_
 
-    return best_parameter
+    return grid.cv_results_
+
+
+def find_random_forest_class_parameters(X, y, cv=5):
+    model = make_pipeline(SimpleImputer(), RandomForestClassifier())
+    params = {
+        "simpleimputer__strategy": ["mean", "median"],
+        "randomforestclassifier__n_estimators": [10, 25, 50],
+        "randomforestclassifier__max_depth": [2, 5, 10],
+        "randomforestclassifier__criterion": ["gini"],
+    }
+    grid = GridSearchCV(model, param_grid=params, cv=cv)
+    grid.fit(X, y)
+    grid.cv_results_
+
+    return grid.cv_results_
 
 
 def create_linear_model(params: dict):
@@ -116,9 +145,44 @@ def create_linear_model(params: dict):
     return best_model
 
 
-def create_gausian_model(params: dict):
-    best_model = make_pipeline(
-        SimpleImputer(strategy=params["simpleimputer__strategy"]), GaussianNB()
+def gaussian_model(params: dict):
+    model = make_pipeline(
+        SimpleImputer(strategy=params["simpleimputer__strategy"]),
+        GaussianNB(
+            priors=params["gaussiannb__priors"],
+            var_smoothing=params["gaussiannb__var_smoothing"],
+        ),
     )
 
-    return best_model
+    return model
+
+
+def random_forest_class(params: dict):
+    model = make_pipeline(
+        SimpleImputer(strategy=params["simpleimputer__strategy"]),
+        RandomForestClassifier(
+            n_estimators=params["randomforestclassifier__n_estimators"],
+            max_depth=params["randomforestclassifier__max_depth"],
+            criterion=params["randomforestclassifier__criterion"],
+        ),
+    )
+
+    return model
+
+
+def get_params(df: pd.DataFrame, model_name: str) -> dict:
+    model_row = df.loc[df["model_name"] == model_name]
+    params = model_row["params"].values[0]
+
+    return params
+
+
+def create_prediction_table(model, X_train, y_train):
+    model.fit(X_train, y_train)
+    y_train_pred = model.predict(X_train)
+
+    train_results = pd.DataFrame({"y_train": y_train, "y_train_pred": y_train_pred})
+
+    train_results = pd.concat([train_results, X_train], axis=1)
+
+    return train_results
