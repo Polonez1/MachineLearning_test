@@ -20,6 +20,9 @@ from sklearn.preprocessing import OneHotEncoder, RobustScaler, MinMaxScaler
 import pandas as pd
 import numpy as np
 
+from sklearn.metrics import accuracy_score
+from itertools import combinations
+
 
 def transform_data(df: pd.DataFrame):
     df_copy = df.copy()
@@ -31,7 +34,7 @@ def transform_data(df: pd.DataFrame):
     preprocessor = ColumnTransformer(
         transformers=[
             ("result", cat_transformer, ["result"]),
-            ("attendance", cat_transformer, ["result"]),
+            ("attendance", cat_transformer, ["attendance"]),
         ]
     )
 
@@ -59,6 +62,8 @@ def split_X_y(df: pd.DataFrame):
         [
             "home_club_position",
             "away_club_position",
+            "home_club_id",
+            "away_club_id",
             "attendance",
             "squad_size_x",
             "average_age_x",
@@ -126,7 +131,21 @@ def find_random_forest_class_parameters(X, y, cv=5):
         "simpleimputer__strategy": ["mean", "median"],
         "randomforestclassifier__n_estimators": [10, 25, 50],
         "randomforestclassifier__max_depth": [2, 5, 10],
-        "randomforestclassifier__criterion": ["gini"],
+        "randomforestclassifier__criterion": ["gini", "entropy"],
+    }
+    grid = GridSearchCV(model, param_grid=params, cv=cv)
+    grid.fit(X, y)
+    grid.cv_results_
+
+    return grid.cv_results_
+
+
+def find_decision_tree_parameters(X, y, cv=5):
+    model = make_pipeline(SimpleImputer(), DecisionTreeClassifier())
+    params = {
+        "simpleimputer__strategy": ["mean", "median"],
+        "decisiontreeclassifier__max_depth": [1, 5, 10, 20],
+        "decisiontreeclassifier__criterion": ["gini", "entropy"],
     }
     grid = GridSearchCV(model, param_grid=params, cv=cv)
     grid.fit(X, y)
@@ -168,6 +187,51 @@ def random_forest_class(params: dict):
     )
 
     return model
+
+
+def decision_tree_model(params: dict):
+    model = make_pipeline(
+        SimpleImputer(strategy=params["simpleimputer__strategy"]),
+        DecisionTreeClassifier(
+            max_depth=params["decisiontreeclassifier__max_depth"],
+            criterion=params["decisiontreeclassifier__criterion"],
+        ),
+    )
+    return model
+
+
+def add_models_to_grid_table(grid_table: pd.DataFrame):
+    models_table = pd.DataFrame(
+        {
+            "model_name": ["gausian", "rfc", "decisionTree"],
+            "model": [gaussian_model, random_forest_class, decision_tree_model],
+        }
+    )
+
+    grid_table = pd.merge(grid_table, models_table, how="left", on="model_name")
+
+    return grid_table
+
+
+def find_best_columns_to_model(
+    columns_to_test: list, model, X_train, y_train, X_test, y_test
+):
+    best_accuracy = 0.0
+    optimal_columns = []
+    for num_columns in range(1, len(columns_to_test) + 1):
+        column_combinations = combinations(columns_to_test, num_columns)
+        for columns in column_combinations:
+            columns_to_model = list(columns)
+            X_train_local = X_train[columns_to_model]
+            y_train_local = y_train
+            model.fit(X_train_local, y_train_local)
+            y_pred = model.predict(X_test[columns_to_model])
+            accuracy = accuracy_score(y_test, y_pred)
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                optimal_columns = columns
+
+    return optimal_columns
 
 
 def get_params(df: pd.DataFrame, model_name: str) -> dict:
