@@ -254,8 +254,11 @@ def create_prediction_table(model, X_train, y_train):
 
 def predict_new_data(model, X_new_data, y_new_result):
     y_new_pred = model.predict(X_new_data)
-    results = pd.DataFrame({"y_pred": y_new_pred, "y_result": y_new_result})
-    result_df = pd.concat([X_new_data, y_new_result, results], axis=1)
+    y_proba = model.predict_proba(X_new_data)
 
-    # accuracy = model.score(X_new_data, y_new_result)
+    results = pd.DataFrame({"y_pred": y_new_pred, "y_result": y_new_result})
+
+    result_df = pd.concat([X_new_data, y_new_result, results], axis=1)
+    result_df["propability"] = y_proba.max(axis=1)
+
     return result_df
