@@ -214,9 +214,9 @@ def add_models_to_grid_table(grid_table: pd.DataFrame):
 
 
 def find_best_columns_to_model(
-    columns_to_test: list, model, X_train, y_train, X_test, y_test
+    columns_to_test: list, model, X_train, y_train, X_test, y_test, best_accuracy=0.5
 ):
-    best_accuracy = 0.0
+    best_accuracy = best_accuracy
     optimal_columns = []
     for num_columns in range(1, len(columns_to_test) + 1):
         column_combinations = combinations(columns_to_test, num_columns)
@@ -250,3 +250,12 @@ def create_prediction_table(model, X_train, y_train):
     train_results = pd.concat([train_results, X_train], axis=1)
 
     return train_results
+
+
+def predict_new_data(model, X_new_data, y_new_result):
+    y_new_pred = model.predict(X_new_data)
+    results = pd.DataFrame({"y_pred": y_new_pred, "y_result": y_new_result})
+    result_df = pd.concat([X_new_data, y_new_result, results], axis=1)
+
+    # accuracy = model.score(X_new_data, y_new_result)
+    return result_df
