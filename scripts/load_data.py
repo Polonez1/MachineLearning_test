@@ -25,6 +25,8 @@ CLUB_COL = [
 FINAL_COL = [
     "home_club_position",
     "away_club_position",
+    "home_club_id",
+    "away_club_id",
     "attendance",
     "squad_size_x",
     "average_age_x",
@@ -69,3 +71,10 @@ def load_df():
     df = df[FINAL_COL]
 
     return df
+
+
+def split_data_random_and_Xy(df: pd.DataFrame) -> pd.DataFrame:
+    random_df = df.sample(n=400)
+    df = df.drop(random_df.index)
+
+    return df, random_df

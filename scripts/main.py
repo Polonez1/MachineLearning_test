@@ -88,6 +88,6 @@ params = machine_learning.get_params(models_params_table, "rfc")
 model = machine_learning.random_forest_class(params=params)
 
 
-prediction_table = machine_learning.create_prediction_table(
-    model=model, X_train=X_train, y_train=y_train
-)
+# prediction_table = machine_learning.create_prediction_table(
+#    model=model, X_train=X_train, y_train=y_train
+# )
