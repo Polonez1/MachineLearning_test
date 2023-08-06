@@ -52,7 +52,7 @@ def unzip_data():
 
 
 def load_df():
-    games = pd.read_csv("./data/games.csv")
+    games = pd.read_csv("../data/games.csv")
     games = games.assign(
         result=lambda x: np.where(
             x["home_club_goals"] > x["away_club_goals"],
@@ -62,7 +62,7 @@ def load_df():
     )
     games = games[GAMES_COL]
 
-    clubs = pd.read_csv("./data/clubs.csv")
+    clubs = pd.read_csv("../data/clubs.csv")
     clubs = clubs[CLUB_COL]
 
     df = pd.merge(games, clubs, how="left", left_on="home_club_id", right_on="club_id")
